@@ -28,8 +28,21 @@ public class ChartSeries {
         mMaxSize = maxSize;
     }
 
+    public void setMaxSize(int maxSize) {
+        mMaxSize = maxSize;
+
+        final int size = size();
+        for (int i = size - 1; i >= maxSize; i--) {
+            mDatas.remove(i);
+        }
+    }
+
     public boolean isEmpty() {
         return mDatas.isEmpty();
+    }
+
+    public void removeAll() {
+        mDatas.clear();
     }
 
     public void removeValue(int i) {
@@ -37,10 +50,10 @@ public class ChartSeries {
     }
 
     public void appendValue(Double value) {
-        if (mDatas.size() == mMaxSize) {
+        if (size() == mMaxSize) {
             Double d = mDatas.pollFirst();
             if (d == mMax || d == mMin) {
-                final int size = mDatas.size();
+                final int size = size();
                 for (int i = 0; i < size; i++) {
                     d = mDatas.get(i);
                     if (d > mMax) mMax = d;

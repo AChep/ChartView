@@ -9,7 +9,7 @@ import android.util.AttributeSet;
 import com.achep.chartview.ChartSeries;
 import com.achep.chartview.ChartView;
 import com.achep.chartview.basics.Path;
-import com.achep.chartview.basics.Viewport;
+import com.achep.fifteenpuzzle.utils.LogUtils;
 
 /**
  * Created by Artem on 07.09.13.
@@ -17,25 +17,30 @@ import com.achep.chartview.basics.Viewport;
 public class LineChartView extends ChartView {
 
     private boolean isDataInitialized;
+    private SurfaceMode mSurfaceMode = SurfaceMode.DYNAMIC;
+
+    public static enum SurfaceMode {
+        DYNAMIC, MANUAL, DYNAMIC_MAX, DYNAMIC_MIN
+    }
 
     public LineChartView(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
     @Override
-    public Viewport onCreateViewport() {
-        return new MyViewport();
+    public com.achep.chartview.basics.Viewport onCreateViewport() {
+        return new Viewport();
     }
 
     @Override
     public void onDraw(Canvas canvas) {
-        final MyViewport viewport = (MyViewport) getViewport();
-        final int height = canvas.getHeight();
-        final int width = canvas.getWidth();
+        final Viewport viewport = (Viewport) getViewport();
+        final int height = getHeight();
+        final int width = getWidth();
 
         final int startIndex = (int) viewport.getViewportX();
         final float offsetX = (float) viewport.getViewportX() - startIndex;
-        final float stepX = (float) width / ((int) viewport.getViewportWidth() - 1);
+        float stepX = (float) width / ((int) viewport.getViewportWidth() - 1);
         final float startX = -offsetX * stepX;
         int endIndex = startIndex + (int) viewport.getViewportWidth();
         if (offsetX != 0) endIndex++;
@@ -44,7 +49,10 @@ public class LineChartView extends ChartView {
         double viewportY = viewport.getSurfaceHeight() - viewportHeight - viewport.getViewportY()
                 + viewport.getHeightOffset();
 
-        canvas.drawText("view_y=" + viewportY + " viw_height=" + viewportHeight, 20, height -  20, getPaint());
+        if (getDebugEnabled()) {
+            resetPaints();
+            canvas.drawText("view_y=" + viewportY + " viw_height=" + viewportHeight, 20, height - 20, getPaint());
+        }
 
         final int size = getChartSeries().size();
         for (int i = 0; i < size; i++) {
@@ -58,62 +66,36 @@ public class LineChartView extends ChartView {
                     viewportY, viewportHeight, height);
         }
 
+        resetPaints();
+        Paint paint = getPaint();
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setColor(0xA0808080);
+        paint.setStrokeWidth(2);
+        Path path = getPath();
 
-      /*  final int canvasHeight = canvas.getHeight();
-        final int canvasWidth = canvas.getWidth();
+        float padding = paint.getStrokeWidth() / 2;
+        path.moveTo(padding, padding);
+        path.lineTo(width - padding, padding);
+        path.lineTo(width - padding, height - padding);
+        path.lineTo(padding, height - padding);
+        path.close();
+        canvas.drawPath(path, paint);
 
-        MyViewport viewport = (MyViewport) getViewport();
-        final double viewportMinY = viewport.getViewportY() + viewport.getHeightOffset();
-        final double viewportMaxY = viewport.getViewportHeight() + viewportMinY;
-        final int viewportMinX = (int) viewport.getViewportX();
-        final int viewportMaxX = viewportMinX + (int) viewport.getViewportWidth();
-        final float viewportOffsetX = (float) viewport.getViewportX() - viewportMinX;
+      /*  int n = 40;
 
-        final int size = getChartSeries().size();
-        for (int i = 0; i < size; i++) {
-            resetPaints();
-            GraphSeries series = getChartSeries().get(i);
-            final float step = (float) canvasWidth / ((int) viewport.getViewportWidth() - 1);
-            float x = -viewportOffsetX * step;
-
-            int left = viewportMinX;
-            int right = viewportMaxX;
-            if (viewportOffsetX > 0)
-                right += 1;
-            if (right > series.getSize())
-            right = series.getSize();
-
-            final GraphSeriesData[] values = series.getValues();
-            boolean first = true;
-            for (int j = left; j < right; j++, x += step) {
-                double y = canvasHeight - (values[j].getValue() - viewportMinY) * canvasHeight / (viewportMaxY - viewportMinY);
-                if (first) {
-                    first = false;
-                    getPath().moveTo(x, (float) y);
-                } else {
-                    getPath().lineTo(x, (float) y);
-                }
-            }
-
-            getPaint().setColor(series.getStyle().color);
-            getPaint().setStrokeWidth(series.getStyle().width);
-
-            // Draw the graph line
-            getPaint().setStyle(Paint.Style.STROKE);
-            canvas.drawPath(getPath(), getPaint());
-
-            if (series.getStyle().background != Color.TRANSPARENT) {
-                getPaint().setColor(series.getStyle().background);
-                getPaint().setStyle(Paint.Style.FILL);
-
-                final int height = canvas.getHeight();
-                getPath().lineTo(x, height);
-                getPath().lineTo(0, height);
-                getPath().close();
-                canvas.drawPath(getPath(), getPaint());
-            }
+        int end = (int) (viewportY + viewportHeight);
+        for (int a = (int) Math.floor(viewportY / n) * n; a <= end; a += n) {
+            float y = (float) ((1f - (float) (a - viewportY) / viewportHeight) * height);
+            canvas.drawLine(0, y, width, y, paint);
         }
-*/
+
+        end = (int) (viewport.getViewportX() + viewport.getViewportWidth());
+        for (int a = (int) Math.floor(viewport.getViewportX() / n) * n; a <= end; a += n) {
+            float x = (float) ((float) (a - viewport.getViewportX()) / viewport.getViewportWidth() * width);
+            canvas.drawLine(x, 0, x, height, paint);
+        }*/
+
+
         // Draw some basics.
         super.onDraw(canvas);
     }
@@ -122,14 +104,14 @@ public class LineChartView extends ChartView {
      * Called on draw series.
      *
      * @param canvas
-     * @param series chart series to draw
-     * @param x start x coordinate
+     * @param series         chart series to draw
+     * @param x              start x coordinate
      * @param stepX
-     * @param i start index of visible values
-     * @param length end index of visible values
+     * @param i              start index of visible values
+     * @param length         end index of visible values
      * @param viewportY
      * @param viewportHeight
-     * @param height {@link android.graphics.Canvas#getHeight()}
+     * @param height         {@link android.graphics.Canvas#getHeight()}
      */
     public void onDrawSeries(Canvas canvas, ChartSeries series,
                              float x, float stepX, int i, int length,
@@ -161,7 +143,7 @@ public class LineChartView extends ChartView {
             paint.setColor(series.getStyle().backgroundColor);
             paint.setStyle(Paint.Style.FILL);
 
-            path.lineTo(x, height);
+            path.lineTo(x - stepX, height);
             path.lineTo(0, height);
             path.close();
             canvas.drawPath(path, paint);
@@ -172,7 +154,7 @@ public class LineChartView extends ChartView {
     public void notifyDataChanged() {
         super.notifyDataChanged();
 
-        MyViewport viewport = (MyViewport) getViewport();
+        Viewport viewport = (Viewport) getViewport();
         double min = isDataInitialized ? viewport.getHeightOffset() : Double.MAX_VALUE;
         double max = isDataInitialized ? viewport.getSurfaceHeight() + min : Double.MIN_VALUE;
         int index = 0;
@@ -191,17 +173,27 @@ public class LineChartView extends ChartView {
             if ((value = series.size()) > index)
                 index = (int) value;
         }
+        LogUtils.d("min=" + min + " max=" + max);
 
         if (index == 0) return; // there's no active (non-empty) series
-        viewport.setSurfaceWidth(index);
-        viewport.setSurfaceHeight(max - min);
-        viewport.setViewport((int) viewport.getSurfaceWidth() / 4, (int) viewport.getSurfaceHeight() / 4);
         viewport.setHeightOffset(min);
+        viewport.setSurfaceSize(index, max - min, true);
 
         isDataInitialized = true;
+        invalidate();
     }
 
-    private class MyViewport extends Viewport {
+    /*public void setSurfaceParams(SurfaceMode surfaceMode, double min, double max) {
+        mSurfaceMode = surfaceMode;
+
+        Viewport viewport = (Viewport) getViewport();
+        if (surfaceMode == SurfaceMode.MANUAL) {
+            viewport.setSurfaceHeight(max - min);
+            viewport.setHeightOffset(min);
+        }
+    }
+*/
+    public static class Viewport extends com.achep.chartview.basics.Viewport {
 
         private double mHeightOffset;
 

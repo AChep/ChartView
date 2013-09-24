@@ -40,8 +40,31 @@ public abstract class ChartView extends View {
 
     @Override
     public void onDraw(Canvas canvas) {
+        final float density = getResources().getDisplayMetrics().density;
+
         resetPaints();
-        mViewport.onDebug(canvas, mPaint);
+        mPaint.setColor(0xDDAAAAAA);
+        mPaint.setStrokeWidth(2 * density);
+        if (mHorizontalScrollBarEnabled) {
+            float horizontalScrollBarX = (float) mViewport.getHorizontalScrollBarX();
+            float horizontalScrollBarY = getHeight() - 3 * density;
+            canvas.drawLine(horizontalScrollBarX, horizontalScrollBarY,
+                    horizontalScrollBarX + (float) mViewport.getHorizontalScrollBarWidth(), horizontalScrollBarY,
+                    mPaint);
+        }
+
+        if (mVerticalScrollBarEnabled) {
+            float verticalScrollBarX = getWidth() - 3 * density;
+            float verticalScrollBarY = (float) mViewport.getVerticalScrollBarY();
+            canvas.drawLine(verticalScrollBarX, verticalScrollBarY,
+                    verticalScrollBarX, verticalScrollBarY + (float) mViewport.getVerticalScrollBarHeight(),
+                    mPaint);
+        }
+
+        if (mDebugEnabled) {
+            resetPaints();
+            mViewport.onDebug(canvas, mPaint);
+        }
     }
 
     public Paint getPaint() {
@@ -62,6 +85,35 @@ public abstract class ChartView extends View {
 
     public Viewport getViewport() {
         return mViewport;
+    }
+
+    // //////////////////////////////////////////
+    // ///////////// -- DEBUG -- ////////////////
+    // //////////////////////////////////////////
+
+    private boolean mDebugEnabled;
+
+    public void setDebugEnabled(boolean enabled) {
+        mDebugEnabled = enabled;
+    }
+
+    public boolean getDebugEnabled() {
+        return mDebugEnabled;
+    }
+
+    // //////////////////////////////////////////
+    // ////////// -- SCROLLBARS -- //////////////
+    // //////////////////////////////////////////
+
+    private boolean mHorizontalScrollBarEnabled = true;
+    private boolean mVerticalScrollBarEnabled = true;
+
+    public void setHorizontalScrollBarEnabled(boolean enabled) {
+        mHorizontalScrollBarEnabled = enabled;
+    }
+
+    public void setVerticalScrollBarEnabled(boolean enabled) {
+        mVerticalScrollBarEnabled = enabled;
     }
 
     // //////////////////////////////////////////
@@ -88,6 +140,10 @@ public abstract class ChartView extends View {
         int i = mChartSeriesList.indexOf(series);
         mChartSeriesList.remove(i);
         return i;
+    }
+
+    public void removeAllChartSeries() {
+        mChartSeriesList.clear();
     }
 
     public ArrayList<ChartSeries> getChartSeries() {

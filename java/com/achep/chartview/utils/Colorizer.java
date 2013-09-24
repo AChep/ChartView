@@ -5,8 +5,8 @@ import android.graphics.Color;
 import java.util.Random;
 
 /**
-* Created by Artem on 06.09.13.
-*/
+ * Created by Artem on 06.09.13.
+ */
 public class Colorizer {
     public static final int RED = 0;
     public static final int GREEN = 1;

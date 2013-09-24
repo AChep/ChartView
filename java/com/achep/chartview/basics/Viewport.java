@@ -14,11 +14,11 @@ import com.achep.chartview.DebugViaCanvas;
 // TODO: fill descriptions
 public class Viewport implements DebugViaCanvas {
 
-    private int realWidth;
-    private int realHeight;
+    private int mRealWidth;
+    private int mRealHeight;
 
-    private double mWidth;
-    private double mHeight;
+    private double mSurfaceWidth;
+    private double mSurfaceHeight;
 
     private double mViewportX;
     private double mViewportWidth;
@@ -28,27 +28,44 @@ public class Viewport implements DebugViaCanvas {
     private float mTouchX;
     private float mTouchY;
 
+    private OnSurfaceSizeChangedListener mOnSurfaceSizeChangedListener;
+
+    public interface OnSurfaceSizeChangedListener {
+
+        public void onSurfaceSizeChanged(Viewport vp, double surfaceWidth, double surfaceHeight,
+                                         double surfaceOldWidth, double surfaceOldHeight);
+    }
+
+    public void setOnSurfaceSizeChangedListener(OnSurfaceSizeChangedListener listener) {
+        mOnSurfaceSizeChangedListener = listener;
+    }
+
     @Override
     public void onDebug(Canvas canvas, Paint paint) {
         paint.setColor(Color.GREEN);
         paint.setStyle(Paint.Style.STROKE);
 
         paint.setTextSize(18);
-        canvas.drawText("x=" + getViewportX() + " width=" + getViewportWidth() + " surface_w=" + getSurfaceWidth(), 10, 20, paint);
-        canvas.drawText("y=" + getViewportY() + " height=" + getViewportHeight() + " surface_h=" + getSurfaceHeight(), 10, 40, paint);
+        canvas.drawText("x=" + getViewportX() + " width=" + getViewportWidth(), 10, 20, paint);
+        canvas.drawText("surface_w=" + getSurfaceWidth() + " viewport_w=" + getViewportWidth(), 10, 40, paint);
+        canvas.drawText("y=" + getViewportY() + " height=" + getViewportHeight() + " surface_h=" + getSurfaceHeight(), 10, 60, paint);
     }
 
     public void onSizeChanged(int width, int height, int oldw, int oldh) {
-        this.realWidth = width;
-        this.realHeight = height;
+        mRealWidth = width;
+        mRealHeight = height;
+
+        if (isSurfaceReady() && mOnSurfaceSizeChangedListener != null) {
+            mOnSurfaceSizeChangedListener.onSurfaceSizeChanged(this, mSurfaceWidth, mSurfaceHeight, mSurfaceWidth, mSurfaceHeight);
+        }
     }
 
     public boolean onTouch(MotionEvent event) {
         final float x = event.getX(), y = event.getY();
         switch (event.getAction()) {
             case MotionEvent.ACTION_MOVE:
-                setViewportX(mViewportX - (x - mTouchX) * mViewportWidth / realWidth);
-                setViewportY(mViewportY - (y - mTouchY) * mViewportHeight / realHeight);
+                setViewportX(mViewportX - (x - mTouchX) * mViewportWidth / mRealWidth);
+                setViewportY(mViewportY - (y - mTouchY) * mViewportHeight / mRealHeight);
             case MotionEvent.ACTION_DOWN:
                 mTouchX = x;
                 mTouchY = y;
@@ -58,8 +75,8 @@ public class Viewport implements DebugViaCanvas {
     }
 
     private void fixHorizontalScrolling() {
-        if (mViewportX + mViewportWidth > mWidth)
-            mViewportX = mWidth - mViewportWidth;
+        if (mViewportX + mViewportWidth > mSurfaceWidth)
+            mViewportX = mSurfaceWidth - mViewportWidth;
 
         // Do not put it inside "else" statement!
         // Otherwise you'll get lil "jumps" while scrolling
@@ -68,8 +85,8 @@ public class Viewport implements DebugViaCanvas {
     }
 
     private void fixVerticalScrolling() {
-        if (mViewportY + mViewportHeight > mHeight)
-            mViewportY = mHeight - mViewportHeight;
+        if (mViewportY + mViewportHeight > mSurfaceHeight)
+            mViewportY = mSurfaceHeight - mViewportHeight;
         if (mViewportY < 0) mViewportY = 0;
     }
 
@@ -77,12 +94,22 @@ public class Viewport implements DebugViaCanvas {
     // ////////////// -- INPUT -- ///////////////
     // //////////////////////////////////////////
 
-    public void setSurfaceHeight(double height) {
-        mHeight = height;
-    }
+    /**
+     * Sets new width and height of the surface.
+     *
+     * @param width  new width of the surface
+     * @param height new height of the surface
+     * @param handle calls {@link OnSurfaceSizeChangedListener#onSurfaceSizeChanged(Viewport, double, double, double, double)} if true
+     */
+    public void setSurfaceSize(double width, double height, boolean handle) {
+        double oldWidth = mSurfaceWidth;
+        double oldHeight = mSurfaceHeight;
+        mSurfaceWidth = width;
+        mSurfaceHeight = height;
 
-    public void setSurfaceWidth(double width) {
-        mWidth = width;
+        if (handle && mOnSurfaceSizeChangedListener != null) {
+            mOnSurfaceSizeChangedListener.onSurfaceSizeChanged(this, width, height, oldWidth, oldHeight);
+        }
     }
 
     /**
@@ -93,7 +120,7 @@ public class Viewport implements DebugViaCanvas {
      * @see #getViewportWidth()
      * @see #getViewportHeight()
      */
-    public void setViewport(int width, int height) {
+    public void setViewportSize(double width, double height) {
         mViewportWidth = width;
         fixHorizontalScrolling();
 
@@ -117,16 +144,44 @@ public class Viewport implements DebugViaCanvas {
     }
 
     // //////////////////////////////////////////
-    // ///////////// -- OUTPUT -- ///////////////
+    // //////////// -- SCROLLBAR -- /////////////
     // //////////////////////////////////////////
 
+    public final double getHorizontalScrollBarWidth() {
+        return mViewportWidth / mSurfaceWidth * mRealWidth;
+    }
+
+    public final double getHorizontalScrollBarX() {
+        return mViewportX / mSurfaceWidth * mRealWidth;
+    }
+
+    public final double getVerticalScrollBarHeight() {
+        return mViewportHeight / mSurfaceHeight * mRealHeight;
+    }
+
+    public final double getVerticalScrollBarY() {
+        return mViewportY / mSurfaceHeight * mRealHeight;
+    }
+
+    // //////////////////////////////////////////
+    // //////////// -- SURFACE -- ///////////////
+    // //////////////////////////////////////////
+
+    public boolean isSurfaceReady() {
+        return mSurfaceWidth > 0 && mSurfaceHeight > 0;
+    }
+
     public final double getSurfaceWidth() {
-        return mWidth;
+        return mSurfaceWidth;
     }
 
     public final double getSurfaceHeight() {
-        return mHeight;
+        return mSurfaceHeight;
     }
+
+    // //////////////////////////////////////////
+    // //////////// -- VIEWPORT -- //////////////
+    // //////////////////////////////////////////
 
     public final double getViewportX() {
         return mViewportX;
@@ -142,6 +197,18 @@ public class Viewport implements DebugViaCanvas {
 
     public final double getViewportHeight() {
         return mViewportHeight;
+    }
+
+    // //////////////////////////////////////////
+    // //////////// -- REALITY -- ///////////////
+    // //////////////////////////////////////////
+
+    public final int getRealWidth() {
+        return mRealWidth;
+    }
+
+    public final int getRealHeight() {
+        return mRealHeight;
     }
 
 }

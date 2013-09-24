@@ -30,7 +30,7 @@ public class Path extends android.graphics.Path {
         }
     }
 
-    public void lineTo(float x, float y){
+    public void lineTo(float x, float y) {
         if (mEnabled) {
             super.lineTo(x, y);
         } else {
